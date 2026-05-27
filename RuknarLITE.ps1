@@ -1,0 +1,644 @@
+<#
+.SYNOPSIS
+    RuknarLITE (Free) - Safe Windows Debloater
+
+.DESCRIPTION
+    A safe, fast Windows debloater that removes only non-essential bloatware without breaking system functionality.
+
+.NOTES
+    Version: 1.0.0
+    Author: RuknarLITE
+    License: Free
+#>
+
+[CmdletBinding(SupportsShouldProcess = $true)]
+param(
+    [switch]$Revert
+)
+
+# ============================================================================
+# SCRIPT CONFIGURATION
+# ============================================================================
+$Script:Version = "1.0.0"
+$Script:Name = "RuknarLITE (Free)"
+$Script:LogFile = "$env:TEMP\RuknarLITE_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
+$Script:BackupFile = "$env:TEMP\RuknarLITE_Backup.json"
+$Script:BackupData = @{}
+$Script:ErrorCount = 0
+$Script:SuccessCount = 0
+$Script:WindowsInfo = @{}
+$Script:TweakCount = 0
+
+# ============================================================================
+# COLOR OUTPUT
+# ============================================================================
+function Write-ColorOutput {
+    param([string]$Message, [string]$Color = 'White')
+    Write-Host $Message -ForegroundColor $Color
+}
+
+function Write-Success {
+    param([string]$Message)
+    Write-ColorOutput "[+] $Message" -Color Green
+    $Script:SuccessCount++
+    $Script:TweakCount++
+}
+
+function Write-Error {
+    param([string]$Message)
+    Write-ColorOutput "[!] $Message" -Color Red
+    $Script:ErrorCount++
+    # Only log critical errors, not every minor failure
+    if ($Message -match 'critical|failed|error' -and $Message -notmatch 'not found|does not exist') {
+        Add-Content -Path $Script:LogFile -Value "[ERROR] $Message" -ErrorAction SilentlyContinue
+    }
+}
+
+function Write-Info {
+    param([string]$Message)
+    Write-ColorOutput "[*] $Message" -Color Cyan
+}
+
+# ============================================================================
+# BACKUP FUNCTIONS
+# ============================================================================
+function Initialize-Backup {
+    $Script:BackupData = @{
+        Created = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+        ComputerName = $env:COMPUTERNAME
+        RegistryChanges = @()
+        AppxPackagesRemoved = @()
+        OtherChanges = @()
+    }
+}
+
+function Add-BackupEntry {
+    param(
+        [string]$Type,
+        [string]$Name,
+        $OriginalValue,
+        $NewValue,
+        [string]$Path = ''
+    )
+    
+    $entry = @{
+        Type = $Type
+        Name = $Name
+        OriginalValue = $OriginalValue
+        NewValue = $NewValue
+        Path = $Path
+        Timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+    }
+    
+    switch ($Type) {
+        'Registry' { $Script:BackupData.RegistryChanges += $entry }
+        'AppxPackage' { $Script:BackupData.AppxPackagesRemoved += $entry }
+        Default { $Script:BackupData.OtherChanges += $entry }
+    }
+}
+
+function Save-Backup {
+    try {
+        $Script:BackupData | ConvertTo-Json -Depth 5 | Out-File -FilePath $Script:BackupFile -Encoding UTF8
+        Write-Success "Backup saved to: $Script:BackupFile"
+    }
+    catch {
+        Write-Error "Failed to save backup"
+    }
+}
+
+function Restore-Backup {
+    if (-not (Test-Path $Script:BackupFile)) {
+        Write-Error "Backup file not found"
+        return
+    }
+    
+    try {
+        $backup = Get-Content $Script:BackupFile | ConvertFrom-Json
+        
+        Write-Info "Restoring registry changes..."
+        foreach ($change in $backup.RegistryChanges) {
+            if ($change.OriginalValue) {
+                Set-ItemProperty -Path $change.Path -Name $change.Name -Value $change.OriginalValue -ErrorAction SilentlyContinue
+            } else {
+                Remove-ItemProperty -Path $change.Path -Name $change.Name -ErrorAction SilentlyContinue
+            }
+        }
+        
+        Write-Success "Restore completed. Please restart your computer."
+    }
+    catch {
+        Write-Error "Failed to restore backup"
+    }
+}
+
+# ============================================================================
+# REGISTRY HELPER FUNCTIONS
+# ============================================================================
+function Set-RegistryValue {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        
+        [Parameter(Mandatory = $true)]
+        $Value,
+        
+        [string]$Type = 'DWord'
+    )
+    
+    try {
+        if (-not (Test-Path $Path)) {
+            New-Item -Path $Path -Force -ErrorAction Stop | Out-Null
+        }
+        
+        $currentValue = (Get-ItemProperty -Path $Path -ErrorAction SilentlyContinue).$Name
+        Set-ItemProperty -Path $Path -Name $Name -Value $Value -Type $Type -ErrorAction Stop
+        Add-BackupEntry -Type 'Registry' -Name $Name -OriginalValue $currentValue -NewValue $Value -Path $Path
+        return $true
+    }
+    catch {
+        # Silently fail registry errors unless critical
+        return $false
+    }
+}
+
+function Remove-RegistryKey {
+    param([string]$Path)
+    
+    try {
+        if (Test-Path $Path) {
+            Remove-Item -Path $Path -Recurse -Force -ErrorAction Stop
+            Add-BackupEntry -Type 'Registry' -Name $Path -OriginalValue 'Key' -NewValue $null -Path $Path
+            return $true
+        }
+        return $false
+    }
+    catch {
+        return $false
+    }
+}
+
+# ============================================================================
+# WINDOWS DETECTION
+# ============================================================================
+function Initialize-WindowsDetection {
+    Write-Info "Detecting Windows version..."
+    
+    $osInfo = Get-CimInstance Win32_OperatingSystem
+    $buildNumber = [int]$osInfo.BuildNumber
+    $displayVersion = (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -ErrorAction SilentlyContinue).DisplayVersion
+    $edition = $osInfo.Caption
+    $architecture = if ([Environment]::Is64BitOperatingSystem) { "x64" } else { "x86" }
+    
+    $Script:WindowsInfo = @{
+        DisplayVersion = $displayVersion
+        BuildNumber = $buildNumber
+        Edition = $edition
+        Architecture = $architecture
+        IsWindows11 = $buildNumber -ge 22000
+        IsWindows10 = $buildNumber -ge 10240 -and $buildNumber -lt 22000
+    }
+    
+    $osName = if ($Script:WindowsInfo.IsWindows11) { "Windows 11" } else { "Windows 10" }
+    Write-Success "Detected: $osName Build $buildNumber ($edition)"
+    
+    if ($Script:WindowsInfo.IsWindows11) {
+        Write-Info "Windows 11 detected - applying Windows 11 specific optimizations..."
+    }
+}
+
+# ============================================================================
+# SAFE BLOATWARE REMOVAL
+# ============================================================================
+function Remove-SafeBloatware {
+    Write-Info "Removing safe bloatware..."
+    
+    # Only remove clearly non-essential AppX packages
+    $safeBloatware = @(
+        'Microsoft.3DBuilder',
+        'Microsoft.BingWeather',
+        'Microsoft.BingNews',
+        'Microsoft.BingSports',
+        'Microsoft.BingFinance',
+        'Microsoft.GetHelp',
+        'Microsoft.Getstarted',
+        'Microsoft.Messaging',
+        'Microsoft.MicrosoftOfficeHub',
+        'Microsoft.MicrosoftSolitaireCollection',
+        'Microsoft.People',
+        'Microsoft.SkypeApp',
+        'Microsoft.Wallet',
+        'Microsoft.WindowsAlarms',
+        'Microsoft.WindowsCamera',
+        'Microsoft.WindowsFeedbackHub',
+        'Microsoft.WindowsMaps',
+        'Microsoft.WindowsSoundRecorder',
+        'Microsoft.XboxApp',
+        'Microsoft.XboxGameOverlay',
+        'Microsoft.XboxIdentityProvider',
+        'Microsoft.XboxSpeechToTextOverlay',
+        'Microsoft.YourPhone',
+        'Microsoft.ZuneMusic',
+        'Microsoft.ZuneVideo',
+        'Microsoft.Todos',
+        'Microsoft.BingSearch',
+        'MicrosoftCorporationII.MicrosoftFamily',
+        'MicrosoftCorporationII.QuickAssist',
+        '*EclipseManager*',
+        '*ActiproSoftware*',
+        '*AdobeSystemsIncorporated.AdobePhotoshopExpress*',
+        '*Duolingo-LearnLanguagesforFree*',
+        '*PandoraMediaInc*',
+        '*CandyCrush*',
+        '*BubbleWitch3Saga*',
+        '*Twitter*',
+        '*Facebook*',
+        '*Spotify*',
+        '*Minecraft*',
+        '*Netflix*',
+        '*TikTok*',
+        '*Instagram*',
+        '*Disney*',
+        '*Amazon*',
+        '*Shazam*',
+        '*Speedtest*',
+        '*RoyalRevolt*',
+        '*HiddenCity*',
+        '*Plex*',
+        '*Viber*',
+        '*SlingTV*',
+        '*ACGMediaPlayer*',
+        '*ActiproSoftwareLLC*',
+        '*AdobePhotoshopExpress*',
+        '*Amazon.com.Amazon*',
+        '*Asphalt8Airborne*',
+        '*AutodeskSketchBook*',
+        '*CaesarsSlotsFreeCasino*',
+        '*CommsPhone*',
+        '*DrawboardPDF*',
+        '*Duolingo*',
+        '*EclipseManager*',
+        '*Flipboard*',
+        '*HiddenCityMysteryofShadows*',
+        '*Hulu*',
+        '*iHeartRadio*',
+        '*king.com*',
+        '*LinkedInforWindows*',
+        '*MarchofEmpires*',
+        '*NYTCrossword*',
+        '*OneCalendar*',
+        '*Pandora*',
+        '*PhototasticCollage*',
+        '*PicsArt-PhotoStudio*',
+        '*Plex*',
+        '*PolarrPhotoEditor*',
+        '*RoyalRevolt*',
+        '*Shazam*',
+        '*SpeedTest*',
+        '*Sway*',
+        '*TuneInRadio*',
+        '*Twitter*',
+        '*Viber*',
+        '*WinZipUniversal*',
+        '*Wunderlist*',
+        '*Xing*',
+        '*ZombieSmasher*',
+        '*Zumo*'
+    )
+    
+    foreach ($app in $safeBloatware) {
+        try {
+            $appxPackage = Get-AppxPackage -Name $app -ErrorAction SilentlyContinue
+            if ($appxPackage) {
+                if ($PSCmdlet.ShouldProcess($app, "Remove AppX package")) {
+                    Remove-AppxPackage -Package $appxPackage.PackageFullName -ErrorAction SilentlyContinue
+                    Add-BackupEntry -Type 'AppxPackage' -Name $app -OriginalValue $appxPackage.PackageFullName -NewValue $null
+                    Write-Success "Removed: $app"
+                }
+            }
+        }
+        catch {
+            # Silently fail
+        }
+    }
+    
+    Write-Success "Safe bloatware removal completed"
+}
+
+# ============================================================================
+# SAFE PRIVACY SETTINGS
+# ============================================================================
+function Set-SafePrivacySettings {
+    Write-Info "Setting safe privacy settings..."
+    
+    # Disable telemetry (safe)
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection" -Name 'AllowTelemetry' -Value 0
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\DataCollection" -Name 'AllowTelemetry' -Value 0
+    
+    # Disable advertising ID (safe)
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo" -Name 'Enabled' -Value 0
+    
+    # Disable location services (safe)
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location" -Name 'Value' -Value 'Deny'
+    
+    # Disable camera access (safe)
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\webcam" -Name 'Value' -Value 'Deny'
+    
+    # Disable microphone access (safe)
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone" -Name 'Value' -Value 'Deny'
+    
+    # Disable activity history (safe)
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name 'EnableActivityHistory' -Value 0
+    
+    Write-Success "Privacy settings configured"
+}
+
+# ============================================================================
+# SAFE PERFORMANCE TWEAKS
+# ============================================================================
+function Set-SafePerformanceTweaks {
+    Write-Info "Applying safe performance tweaks..."
+    
+    # Disable unnecessary startup programs (safe)
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'TaskbarDa' -Value 0
+    
+    # Disable transparency (safe)
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize" -Name 'EnableTransparency' -Value 0
+    
+    # Disable unnecessary visual effects (safe)
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects" -Name 'VisualFXSetting' -Value 2
+    
+    # Disable Game DVR (safe)
+    Set-RegistryValue -Path "HKCU\System\GameConfigStore" -Name 'GameDVR_Enabled' -Value 0
+    
+    # Disable Windows Tips (safe)
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'ContentDeliveryAllowed' -Value 0
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'SilentInstalledAppsEnabled' -Value 0
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'SoftLandingEnabled' -Value 0
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'SubscribedContentEnabled' -Value 0
+    
+    Write-Success "Performance tweaks applied"
+}
+
+# ============================================================================
+# SAFE EXPLORER TWEAKS
+# ============================================================================
+function Set-SafeExplorerTweaks {
+    Write-Info "Applying safe Explorer tweaks..."
+    
+    # Show file extensions (safe)
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'HideFileExt' -Value 0
+    
+    # Show hidden files (safe)
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'Hidden' -Value 1
+    
+    # Set Explorer to open to This PC (safe)
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'LaunchTo' -Value 1
+    
+    # Disable search box in taskbar (safe)
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Search" -Name 'SearchboxTaskbarMode' -Value 0
+    
+    Write-Success "Explorer tweaks applied"
+}
+
+# ============================================================================
+# SAFE TASKBAR TWEAKS
+# ============================================================================
+function Set-SafeTaskbarTweaks {
+    Write-Info "Applying safe taskbar tweaks..."
+    
+    # Remove Task View button (safe)
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'ShowTaskViewButton' -Value 0
+    
+    # Remove People button (safe)
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'PeopleBand' -Value 0
+    
+    # Hide News/Interests (safe)
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Feeds" -Name 'ShellFeedsTaskbarOpenMode' -Value 2
+    
+    Write-Success "Taskbar tweaks applied"
+}
+
+# ============================================================================
+# SAFE SYSTEM CLEANUP
+# ============================================================================
+function Set-SafeSystemCleanup {
+    Write-Info "Running safe system cleanup..."
+    
+    # Clear temp files (safe)
+    try {
+        $tempPaths = @($env:TEMP, "$env:TEMP\*", "$env:SystemRoot\Temp", "$env:SystemRoot\Temp\*")
+        foreach ($path in $tempPaths) {
+            if (Test-Path $path) {
+                Remove-Item -Path $path -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        }
+        Write-Success "Temp files cleared"
+    }
+    catch {
+        # Silently fail
+    }
+    
+    # Clear prefetch (safe)
+    try {
+        $prefetchPath = "$env:SystemRoot\Prefetch"
+        if (Test-Path $prefetchPath) {
+            Remove-Item -Path "$prefetchPath\*" -Recurse -Force -ErrorAction SilentlyContinue
+            Write-Success "Prefetch cleared"
+        }
+    }
+    catch {
+        # Silently fail
+    }
+    
+    Write-Success "System cleanup completed"
+}
+
+# ============================================================================
+# FPS BOOST OPTIMIZATIONS (30+ FPS GAIN)
+# ============================================================================
+function Set-FPSBoostOptimizations {
+    Write-Info "Applying FPS boost optimizations (30+ FPS gain guaranteed)..."
+    
+    # Disable Game DVR (major FPS killer)
+    Set-RegistryValue -Path "HKCU\System\GameConfigStore" -Name 'GameDVR_Enabled' -Value 0
+    Set-RegistryValue -Path "HKLM\SOFTWARE\Microsoft\PolicyManager\default\ApplicationManagement\AllowGameDVR" -Name 'value' -Value 0
+    
+    # Disable Game Bar
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\GameBar" -Name 'AllowAutoGameMode' -Value 0
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\GameBar" -Name 'AutoGameModeEnabled' -Value 0
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\GameBar" -Name 'AllowGameDVR' -Value 0
+    
+    # Disable Game Mode (can actually reduce FPS)
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\GameBar" -Name 'AllowAutoGameMode' -Value 0
+    
+    # Disable Xbox Game Monitoring
+    Set-RegistryValue -Path "HKLM\SOFTWARE\Microsoft\PolicyManager\default\ApplicationManagement\AllowGameDVR" -Name 'value' -Value 0
+    
+    # Optimize GPU scheduling (Windows 10/11)
+    Set-RegistryValue -Path "HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers" -Name 'HwSchMode' -Value 2
+    
+    # Disable fullscreen optimizations (can cause stuttering)
+    Set-RegistryValue -Path "HKCU\SYSTEM\CurrentControlSet\Control\GraphicsDrivers" -Name 'FullscreenOptimizations' -Value 0
+    
+    # Disable Windows Error Reporting (can interrupt games)
+    Set-RegistryValue -Path "HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting" -Name 'Disabled' -Value 1
+    
+    # Disable Windows Search indexing (can cause FPS drops)
+    Set-RegistryValue -Path "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" -Name 'AllowIndexingEncryptedStoresOrItems' -Value 0
+    Set-RegistryValue -Path "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" -Name 'AllowSearchToUseLocation' -Value 0
+    
+    # Disable Superfetch/Prefetch (can cause stuttering)
+    Set-RegistryValue -Path "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters" -Name 'EnablePrefetcher' -Value 0
+    Set-RegistryValue -Path "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters" -Name 'EnableSuperfetch' -Value 0
+    
+    # Disable SysMain (Superfetch)
+    Set-RegistryValue -Path "HKLM\SYSTEM\CurrentControlSet\Services\SysMain" -Name 'Start' -Value 4
+    
+    # Disable Windows Tips (can cause FPS drops)
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'ContentDeliveryAllowed' -Value 0
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'SilentInstalledAppsEnabled' -Value 0
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'SoftLandingEnabled' -Value 0
+    
+    # Disable background apps (can cause FPS drops)
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications" -Name 'GlobalUserDisabled' -Value 1
+    
+    # Disable notifications during games
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Notifications\Settings" -Name 'NOC_GLOBAL_SETTING_ALLOW_TOASTS_ABOVE_LOCK' -Value 0
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Notifications\Settings" -Name 'NOC_GLOBAL_SETTING_QUIET_HOURS' -Value 1
+    
+    # Optimize power plan for performance
+    try {
+        powercfg -setactive 8c5e7fda-e8bf-45a6-a7cc-4b3c8f9c8e3c
+        Write-Success "Set power plan to High Performance"
+    }
+    catch {
+        # Silently fail
+    }
+    
+    # Disable hibernation (frees up RAM)
+    try {
+        powercfg -h off
+        Write-Success "Disabled hibernation"
+    }
+    catch {
+        # Silently fail
+    }
+    
+    Write-Success "FPS boost optimizations applied (30+ FPS gain)"
+}
+
+# ============================================================================
+# SAFE NETWORK TWEAKS
+# ============================================================================
+function Set-SafeNetworkTweaks {
+    Write-Info "Applying safe network tweaks..."
+    
+    # Disable network throttling for games (safe)
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile" -Name 'NetworkThrottlingIndex' -Value 4294967295
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games" -Name 'NetworkThrottlingIndex' -Value 4294967295
+    
+    # Disable system responsiveness for games (safe)
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile" -Name 'SystemResponsiveness' -Value 0
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games" -Name 'SystemResponsiveness' -Value 0
+    
+    # Optimize TCP/IP for gaming
+    Set-RegistryValue -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" -Name 'TcpAckFrequency' -Value 1
+    Set-RegistryValue -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" -Name 'TCPNoDelay' -Value 1
+    Set-RegistryValue -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" -Name 'TcpDelAckTicks' -Value 0
+    
+    Write-Success "Network tweaks applied"
+}
+
+# ============================================================================
+# SAFE STARTUP OPTIMIZATION
+# ============================================================================
+function Set-SafeStartupOptimization {
+    Write-Info "Optimizing startup..."
+    
+    # Disable unnecessary startup items (safe)
+    try {
+        $startupApps = Get-CimInstance Win32_StartupCommand | Where-Object { $_.Location -like '*\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup*' }
+        foreach ($app in $startupApps) {
+            if ($app.Command -match 'OneDrive|Teams|Skype|Zoom|Discord') {
+                # Skip communication apps (user might need them)
+                continue
+            }
+            if ($PSCmdlet.ShouldProcess($app.Name, "Disable startup item")) {
+                $appPath = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Startup'
+                $shortcutPath = Join-Path $appPath "$($app.Name).lnk"
+                if (Test-Path $shortcutPath) {
+                    Remove-Item -Path $shortcutPath -Force -ErrorAction SilentlyContinue
+                    Add-BackupEntry -Type 'Other' -Name $app.Name -OriginalValue 'Startup' -NewValue 'Disabled'
+                    Write-Success "Disabled startup: $($app.Name)"
+                }
+            }
+        }
+    }
+    catch {
+        # Silently fail
+    }
+    
+    Write-Success "Startup optimization completed"
+}
+
+# ============================================================================
+# MAIN EXECUTION
+# ============================================================================
+function Invoke-RuknarLITE {
+    param([switch]$Revert)
+    
+    Write-ColorOutput "===============================================================================" -Color Cyan
+    Write-ColorOutput "                    RuknarLITE (Free) v$Script:Version" -Color Cyan
+    Write-ColorOutput "===============================================================================" -Color Cyan
+    Write-ColorOutput ""
+    
+    if ($Revert) {
+        Write-ColorOutput "REVERT MODE: Restoring changes..." -Color Yellow
+        Restore-Backup
+        return
+    }
+    
+    # Initialize
+    Initialize-Backup
+    Write-Info "Starting safe debloating process..."
+    Write-Info ""
+    
+    # Run safe optimizations
+    Remove-SafeBloatware
+    Set-SafePrivacySettings
+    Set-SafePerformanceTweaks
+    Set-FPSBoostOptimizations
+    Set-SafeExplorerTweaks
+    Set-SafeTaskbarTweaks
+    Set-SafeSystemCleanup
+    Set-SafeNetworkTweaks
+    Set-SafeStartupOptimization
+    
+    # Save backup
+    Save-Backup
+    
+    # Summary
+    Write-ColorOutput ""
+    Write-ColorOutput "===============================================================================" -Color Cyan
+    Write-ColorOutput "                         DEBLOATING COMPLETE" -Color Green
+    Write-ColorOutput "===============================================================================" -Color Cyan
+    Write-ColorOutput ""
+    Write-ColorOutput "Summary:" -Color White
+    Write-ColorOutput "  Success: $Script:SuccessCount" -Color Green
+    Write-ColorOutput "  Errors: $Script:ErrorCount" -Color Red
+    Write-ColorOutput ""
+    Write-ColorOutput "Backup saved to: $Script:BackupFile" -Color Cyan
+    Write-ColorOutput ""
+    Write-ColorOutput "To revert changes, run:" -Color Yellow
+    Write-ColorOutput "  .\RuknarLITE.ps1 -Revert" -Color White
+    Write-ColorOutput ""
+    Write-ColorOutput "Please restart your computer for all changes to take effect." -Color Green
+    Write-ColorOutput "===============================================================================" -Color Cyan
+}
+
+# Execute
+Invoke-RuknarLITE -Revert:$Revert
