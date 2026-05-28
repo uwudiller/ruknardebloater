@@ -31,6 +31,36 @@ $Script:TweakCount = 0
 $Script:AttemptedCount = 0
 
 # ============================================================================
+# MAKE TERMINAL TRANSPARENT
+# ============================================================================
+function Set-TransparentTerminal {
+    try {
+        Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public class Win32 {
+    [DllImport("user32.dll")]
+    public static extern int SetLayeredWindowAttributes(IntPtr hWnd, uint crKey, byte bAlpha, uint dwFlags);
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")]
+    public static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+    [DllImport("user32.dll")]
+    public static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+}
+"@
+        
+        $hwnd = [Win32]::GetForegroundWindow()
+        $exStyle = [Win32]::GetWindowLong($hwnd, -20)
+        [Win32]::SetWindowLong($hwnd, -20, $exStyle -bor 0x00080000)
+        [Win32]::SetLayeredWindowAttributes($hwnd, 0, 200, 0x00000002)
+    }
+    catch {
+        # Silently fail if transparency doesn't work
+    }
+}
+
+# ============================================================================
 # COLOR OUTPUT
 # ============================================================================
 function Write-ColorOutput {
@@ -232,6 +262,9 @@ function Initialize-WindowsDetection {
 function Remove-SafeBloatware {
     Write-Info "Removing safe bloatware..."
     
+    # Count all bloatware packages as attempted
+    $Script:AttemptedCount += $safeBloatware.Count
+    
     # Only remove clearly non-essential AppX packages
     $safeBloatware = @(
         'Microsoft.3DBuilder',
@@ -406,12 +439,12 @@ function Remove-SafeBloatware {
 function Set-SafePrivacySettings {
     Write-Info "Setting safe privacy settings..."
     
-    # Disable telemetry (safe)
+    # Disable telemetry (safe) - 3 operations
     Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection" -Name 'AllowTelemetry' -Value 0 | Out-Null
     Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\DataCollection" -Name 'AllowTelemetry' -Value 0 | Out-Null
     Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection" -Name 'MaxTelemetryAllowed' -Value 0 | Out-Null
     
-    # Disable advertising ID (safe)
+    # Disable advertising ID (safe) - 2 operations
     Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo" -Name 'Enabled' -Value 0 | Out-Null
     Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo" -Name 'Enabled' -Value 0 | Out-Null
     
@@ -480,19 +513,19 @@ function Set-SafePrivacySettings {
 function Set-SafePerformanceTweaks {
     Write-Info "Applying safe performance tweaks..."
     
-    # Disable unnecessary startup programs (safe)
+    # Disable unnecessary startup programs (safe) - 1 operation
     Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'TaskbarDa' -Value 0 | Out-Null
     
-    # Disable transparency (safe)
+    # Disable transparency (safe) - 1 operation
     Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize" -Name 'EnableTransparency' -Value 0 | Out-Null
     
-    # Disable unnecessary visual effects (safe)
+    # Disable unnecessary visual effects (safe) - 1 operation
     Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects" -Name 'VisualFXSetting' -Value 2 | Out-Null
     
-    # Disable Game DVR (safe)
+    # Disable Game DVR (safe) - 1 operation
     Set-RegistryValue -Path "HKCU\System\GameConfigStore" -Name 'GameDVR_Enabled' -Value 0 | Out-Null
     
-    # Disable Windows Tips (safe)
+    # Disable Windows Tips (safe) - 4 operations
     Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'ContentDeliveryAllowed' -Value 0 | Out-Null
     Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'SilentInstalledAppsEnabled' -Value 0 | Out-Null
     Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'SoftLandingEnabled' -Value 0 | Out-Null
@@ -505,16 +538,16 @@ function Set-SafePerformanceTweaks {
 function Set-SafeExplorerTweaks {
     Write-Info "Applying safe Explorer tweaks..."
     
-    # Show file extensions (safe)
+    # Show file extensions (safe) - 1 operation
     Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'HideFileExt' -Value 0 | Out-Null
     
-    # Show hidden files (safe)
+    # Show hidden files (safe) - 1 operation
     Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'Hidden' -Value 1 | Out-Null
     
-    # Set Explorer to open to This PC (safe)
+    # Set Explorer to open to This PC (safe) - 1 operation
     Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'LaunchTo' -Value 1 | Out-Null
     
-    # Disable search box in taskbar (safe)
+    # Disable search box in taskbar (safe) - 1 operation
     Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Search" -Name 'SearchboxTaskbarMode' -Value 0 | Out-Null
 }
 
@@ -524,13 +557,13 @@ function Set-SafeExplorerTweaks {
 function Set-SafeTaskbarTweaks {
     Write-Info "Applying safe taskbar tweaks..."
     
-    # Remove Task View button (safe)
+    # Remove Task View button (safe) - 1 operation
     Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'ShowTaskViewButton' -Value 0 | Out-Null
     
-    # Remove People button (safe)
+    # Remove People button (safe) - 1 operation
     Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'PeopleBand' -Value 0 | Out-Null
     
-    # Hide News/Interests (safe)
+    # Hide News/Interests (safe) - 1 operation
     Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Feeds" -Name 'ShellFeedsTaskbarOpenMode' -Value 2 | Out-Null
 }
 
@@ -540,7 +573,7 @@ function Set-SafeTaskbarTweaks {
 function Set-SafeSystemCleanup {
     Write-Info "Running safe system cleanup..."
     
-    # Clear temp files (safe)
+    # Clear temp files (safe) - 1 operation
     try {
         $tempPaths = @($env:TEMP, "$env:TEMP\*", "$env:SystemRoot\Temp", "$env:SystemRoot\Temp\*")
         foreach ($path in $tempPaths) {
@@ -553,8 +586,9 @@ function Set-SafeSystemCleanup {
     catch {
         # Silently fail
     }
+    $Script:AttemptedCount++
     
-    # Clear prefetch (safe)
+    # Clear prefetch (safe) - 1 operation
     try {
         $prefetchPath = "$env:SystemRoot\Prefetch"
         if (Test-Path $prefetchPath) {
@@ -565,6 +599,7 @@ function Set-SafeSystemCleanup {
     catch {
         # Silently fail
     }
+    $Script:AttemptedCount++
     
     Write-Info "System cleanup completed"
 }
@@ -579,33 +614,33 @@ function Set-Windows11Optimizations {
     
     Write-Info "Applying Windows 11 specific optimizations..."
     
-    # Disable Windows 11 Copilot (AI assistant)
+    # Disable Windows 11 Copilot (AI assistant) - 2 operations
     Set-RegistryValue -Path "HKCU\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot" -Name 'TurnOffWindowsCopilot' -Value 1 -Type DWord | Out-Null
     Set-RegistryValue -Path "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot" -Name 'TurnOffWindowsCopilot' -Value 1 -Type DWord | Out-Null
     
-    # Disable Windows 11 Widgets
+    # Disable Windows 11 Widgets - 2 operations
     Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'TaskbarDa' -Value 0 -Type DWord | Out-Null
     Set-RegistryValue -Path "HKLM\SOFTWARE\Policies\Microsoft\Dsh" -Name 'AllowNewsAndInterests' -Value 0 -Type DWord | Out-Null
     
-    # Disable Windows 11 Snap Layouts hover
+    # Disable Windows 11 Snap Layouts hover - 1 operation
     Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'EnableSnapAssistFlyout' -Value 0 -Type DWord | Out-Null
     
-    # Disable Windows 11 centered taskbar (optional - keep left aligned)
+    # Disable Windows 11 centered taskbar (optional - keep left aligned) - 1 operation
     Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'TaskbarAl' -Value 0 -Type DWord | Out-Null
     
-    # Disable Windows 11 Chat icon
+    # Disable Windows 11 Chat icon - 1 operation
     Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'TaskbarMn' -Value 0 -Type DWord | Out-Null
     
-    # Disable Windows 11 Search highlights
+    # Disable Windows 11 Search highlights - 1 operation
     Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'TaskbarSearchBoxMode' -Value 0 -Type DWord | Out-Null
     
-    # Disable Windows 11 recommendations in Start Menu
+    # Disable Windows 11 recommendations in Start Menu - 1 operation
     Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'Start_IrisRecommendations' -Value 0 -Type DWord | Out-Null
     
-    # Disable Windows 11 ads in Start Menu
+    # Disable Windows 11 ads in Start Menu - 1 operation
     Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'Start_ShowRecommendedSection' -Value 0 -Type DWord | Out-Null
     
-    # Disable Windows 11 File Explorer ads
+    # Disable Windows 11 File Explorer ads - 1 operation
     Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'ShowSyncProviderNotifications' -Value 0 -Type DWord | Out-Null
 }
 
@@ -615,54 +650,54 @@ function Set-Windows11Optimizations {
 function Set-FPSBoostOptimizations {
     Write-Info "Applying FPS boost optimizations (30+ FPS gain guaranteed)..."
     
-    # Disable Game DVR (major FPS killer)
+    # Disable Game DVR (major FPS killer) - 2 operations
     Set-RegistryValue -Path "HKCU\System\GameConfigStore" -Name 'GameDVR_Enabled' -Value 0 | Out-Null
     Set-RegistryValue -Path "HKLM\SOFTWARE\Microsoft\PolicyManager\default\ApplicationManagement\AllowGameDVR" -Name 'value' -Value 0 | Out-Null
     
-    # Disable Game Bar
+    # Disable Game Bar - 3 operations
     Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\GameBar" -Name 'AllowAutoGameMode' -Value 0 | Out-Null
     Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\GameBar" -Name 'AutoGameModeEnabled' -Value 0 | Out-Null
     Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\GameBar" -Name 'AllowGameDVR' -Value 0 | Out-Null
     
-    # Disable Game Mode (can actually reduce FPS)
+    # Disable Game Mode (can actually reduce FPS) - 1 operation
     Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\GameBar" -Name 'AllowAutoGameMode' -Value 0 | Out-Null
     
-    # Disable Xbox Game Monitoring
+    # Disable Xbox Game Monitoring - 1 operation
     Set-RegistryValue -Path "HKLM\SOFTWARE\Microsoft\PolicyManager\default\ApplicationManagement\AllowGameDVR" -Name 'value' -Value 0 | Out-Null
     
-    # Optimize GPU scheduling (Windows 10/11)
+    # Optimize GPU scheduling (Windows 10/11) - 1 operation
     Set-RegistryValue -Path "HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers" -Name 'HwSchMode' -Value 2 | Out-Null
     
-    # Disable fullscreen optimizations (can cause stuttering)
+    # Disable fullscreen optimizations (can cause stuttering) - 1 operation
     Set-RegistryValue -Path "HKCU\SYSTEM\CurrentControlSet\Control\GraphicsDrivers" -Name 'FullscreenOptimizations' -Value 0 | Out-Null
     
-    # Disable Windows Error Reporting (can interrupt games)
+    # Disable Windows Error Reporting (can interrupt games) - 1 operation
     Set-RegistryValue -Path "HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting" -Name 'Disabled' -Value 1 | Out-Null
     
-    # Disable Windows Search indexing (can cause FPS drops)
+    # Disable Windows Search indexing (can cause FPS drops) - 2 operations
     Set-RegistryValue -Path "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" -Name 'AllowIndexingEncryptedStoresOrItems' -Value 0 | Out-Null
     Set-RegistryValue -Path "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" -Name 'AllowSearchToUseLocation' -Value 0 | Out-Null
     
-    # Disable Superfetch/Prefetch (can cause stuttering)
+    # Disable Superfetch/Prefetch (can cause stuttering) - 2 operations
     Set-RegistryValue -Path "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters" -Name 'EnablePrefetcher' -Value 0 | Out-Null
     Set-RegistryValue -Path "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters" -Name 'EnableSuperfetch' -Value 0 | Out-Null
     
-    # Disable SysMain (Superfetch)
+    # Disable SysMain (Superfetch) - 1 operation
     Set-RegistryValue -Path "HKLM\SYSTEM\CurrentControlSet\Services\SysMain" -Name 'Start' -Value 4 | Out-Null
     
-    # Disable Windows Tips (can cause FPS drops)
+    # Disable Windows Tips (can cause FPS drops) - 3 operations
     Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'ContentDeliveryAllowed' -Value 0 | Out-Null
     Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'SilentInstalledAppsEnabled' -Value 0 | Out-Null
     Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'SoftLandingEnabled' -Value 0 | Out-Null
     
-    # Disable background apps (can cause FPS drops)
+    # Disable background apps (can cause FPS drops) - 1 operation
     Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications" -Name 'GlobalUserDisabled' -Value 1 | Out-Null
     
-    # Disable notifications during games
+    # Disable notifications during games - 2 operations
     Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Notifications\Settings" -Name 'NOC_GLOBAL_SETTING_ALLOW_TOASTS_ABOVE_LOCK' -Value 0 | Out-Null
     Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Notifications\Settings" -Name 'NOC_GLOBAL_SETTING_QUIET_HOURS' -Value 1 | Out-Null
     
-    # Optimize power plan for performance
+    # Optimize power plan for performance - 1 operation
     try {
         powercfg -setactive 8c5e7fda-e8bf-45a6-a7cc-4b3c8f9c8e3c
         Write-Info "Set power plan to High Performance"
@@ -670,8 +705,9 @@ function Set-FPSBoostOptimizations {
     catch {
         # Silently fail
     }
+    $Script:AttemptedCount++
     
-    # Disable hibernation (frees up RAM)
+    # Disable hibernation (frees up RAM) - 1 operation
     try {
         powercfg -h off
         Write-Info "Disabled hibernation"
@@ -679,6 +715,7 @@ function Set-FPSBoostOptimizations {
     catch {
         # Silently fail
     }
+    $Script:AttemptedCount++
 }
 
 # ============================================================================
@@ -687,15 +724,15 @@ function Set-FPSBoostOptimizations {
 function Set-SafeNetworkTweaks {
     Write-Info "Applying safe network tweaks..."
     
-    # Disable network throttling for games (safe)
+    # Disable network throttling for games (safe) - 2 operations
     Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile" -Name 'NetworkThrottlingIndex' -Value 4294967295 | Out-Null
     Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games" -Name 'NetworkThrottlingIndex' -Value 4294967295 | Out-Null
     
-    # Disable system responsiveness for games (safe)
+    # Disable system responsiveness for games (safe) - 2 operations
     Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile" -Name 'SystemResponsiveness' -Value 0 | Out-Null
     Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games" -Name 'SystemResponsiveness' -Value 0 | Out-Null
     
-    # Optimize TCP/IP for gaming
+    # Optimize TCP/IP for gaming - 3 operations
     Set-RegistryValue -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" -Name 'TcpAckFrequency' -Value 1 | Out-Null
     Set-RegistryValue -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" -Name 'TCPNoDelay' -Value 1 | Out-Null
     Set-RegistryValue -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" -Name 'TcpDelAckTicks' -Value 0 | Out-Null
@@ -729,6 +766,9 @@ function Set-SafeStartupOptimization {
     catch {
         # Silently fail
     }
+    
+    # Count as 1 operation regardless of results
+    $Script:AttemptedCount++
     
     Write-Info "Startup optimization completed"
 }
@@ -790,6 +830,9 @@ function Show-Disclaimer {
 function Invoke-RuknarLITE {
     param([switch]$Revert)
     
+    # Make terminal transparent
+    Set-TransparentTerminal
+    
     Write-ColorOutput "===============================================================================" -Color Cyan
     Write-ColorOutput "                    RuknarLITE (Free) v$Script:Version" -Color Cyan
     Write-ColorOutput "===============================================================================" -Color Cyan
@@ -815,18 +858,38 @@ function Invoke-RuknarLITE {
     Initialize-Backup
     Write-Info "Starting safe debloating process..."
     Write-Info ""
+    Start-Sleep -Seconds 2
     
     # Run safe optimizations
     Remove-SafeBloatware
+    Start-Sleep -Seconds 3
+    
     Set-SafePrivacySettings
+    Start-Sleep -Seconds 3
+    
     Set-SafePerformanceTweaks
+    Start-Sleep -Seconds 3
+    
     Set-FPSBoostOptimizations
+    Start-Sleep -Seconds 3
+    
     Set-Windows11Optimizations
+    Start-Sleep -Seconds 2
+    
     Set-SafeExplorerTweaks
+    Start-Sleep -Seconds 2
+    
     Set-SafeTaskbarTweaks
+    Start-Sleep -Seconds 2
+    
     Set-SafeSystemCleanup
+    Start-Sleep -Seconds 3
+    
     Set-SafeNetworkTweaks
+    Start-Sleep -Seconds 3
+    
     Set-SafeStartupOptimization
+    Start-Sleep -Seconds 3
     
     # Save backup
     Save-Backup
