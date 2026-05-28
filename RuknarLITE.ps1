@@ -157,6 +157,7 @@ function Set-RegistryValue {
         $currentValue = (Get-ItemProperty -Path $Path -ErrorAction SilentlyContinue).$Name
         Set-ItemProperty -Path $Path -Name $Name -Value $Value -Type $Type -ErrorAction Stop
         Add-BackupEntry -Type 'Registry' -Name $Name -OriginalValue $currentValue -NewValue $Value -Path $Path
+        Write-Success "Set registry: ${Path}\${Name} = $Value"
         return $true
     }
     catch {
@@ -172,6 +173,7 @@ function Remove-RegistryKey {
         if (Test-Path $Path) {
             Remove-Item -Path $Path -Recurse -Force -ErrorAction Stop
             Add-BackupEntry -Type 'Registry' -Name $Path -OriginalValue 'Key' -NewValue $null -Path $Path
+            Write-Success "Removed registry key: $Path"
             return $true
         }
         return $false
@@ -381,7 +383,7 @@ function Remove-SafeBloatware {
         }
     }
     
-    Write-Success "Safe bloatware removal completed"
+    Write-Info "Safe bloatware removal completed"
 }
 
 # ============================================================================
@@ -391,73 +393,71 @@ function Set-SafePrivacySettings {
     Write-Info "Setting safe privacy settings..."
     
     # Disable telemetry (safe)
-    Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection" -Name 'AllowTelemetry' -Value 0
-    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\DataCollection" -Name 'AllowTelemetry' -Value 0
-    Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection" -Name 'MaxTelemetryAllowed' -Value 0
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection" -Name 'AllowTelemetry' -Value 0 | Out-Null
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\DataCollection" -Name 'AllowTelemetry' -Value 0 | Out-Null
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection" -Name 'MaxTelemetryAllowed' -Value 0 | Out-Null
     
     # Disable advertising ID (safe)
-    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo" -Name 'Enabled' -Value 0
-    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo" -Name 'Enabled' -Value 0
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo" -Name 'Enabled' -Value 0 | Out-Null
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo" -Name 'Enabled' -Value 0 | Out-Null
     
     # Disable location services (safe)
-    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location" -Name 'Value' -Value 'Deny'
-    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location" -Name 'Value' -Value 'Deny'
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location" -Name 'Value' -Value 'Deny' | Out-Null
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location" -Name 'Value' -Value 'Deny' | Out-Null
     
     # Disable camera access (safe)
-    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\webcam" -Name 'Value' -Value 'Deny'
-    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\webcam" -Name 'Value' -Value 'Deny'
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\webcam" -Name 'Value' -Value 'Deny' | Out-Null
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\webcam" -Name 'Value' -Value 'Deny' | Out-Null
     
     # Disable microphone access (safe)
-    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone" -Name 'Value' -Value 'Deny'
-    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone" -Name 'Value' -Value 'Deny'
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone" -Name 'Value' -Value 'Deny' | Out-Null
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone" -Name 'Value' -Value 'Deny' | Out-Null
     
     # Disable activity history (safe)
-    Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name 'EnableActivityHistory' -Value 0
-    Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name 'PublishUserActivities' -Value 0
-    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Privacy" -Name 'TailoredExperiencesWithDiagnosticDataEnabled' -Value 0
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name 'EnableActivityHistory' -Value 0 | Out-Null
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name 'PublishUserActivities' -Value 0 | Out-Null
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Privacy" -Name 'TailoredExperiencesWithDiagnosticDataEnabled' -Value 0 | Out-Null
     
     # Disable Cortana (safe)
-    Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Search" -Name 'AllowCortana' -Value 0
-    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search" -Name 'CortanaConsent' -Value 0
-    Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Search" -Name 'BingSearchEnabled' -Value 0
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Search" -Name 'AllowCortana' -Value 0 | Out-Null
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search" -Name 'CortanaConsent' -Value 0 | Out-Null
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Search" -Name 'BingSearchEnabled' -Value 0 | Out-Null
     
     # Disable Windows Error Reporting (safe)
-    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting" -Name 'Disabled' -Value 1
-    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\Windows Error Reporting" -Name 'Disabled' -Value 1
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting" -Name 'Disabled' -Value 1 | Out-Null
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\Windows Error Reporting" -Name 'Disabled' -Value 1 | Out-Null
     
     # Disable Customer Experience Improvement Program (safe)
-    Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\SQMClient\Windows" -Name 'CEIPEnable' -Value 0
-    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\SQMClient\Windows" -Name 'CEIPEnable' -Value 0
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\SQMClient\Windows" -Name 'CEIPEnable' -Value 0 | Out-Null
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\SQMClient\Windows" -Name 'CEIPEnable' -Value 0 | Out-Null
     
     # Disable app diagnostics (safe)
-    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Privacy" -Name 'TailoredExperiencesWithDiagnosticDataEnabled' -Value 0
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Privacy" -Name 'TailoredExperiencesWithDiagnosticDataEnabled' -Value 0 | Out-Null
     
     # Disable Microsoft account sync (safe)
-    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\SettingSync" -Name 'BackupPolicy' -Value 0
-    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\SettingSync" -Name 'DeviceMetadataUploaded' -Value 0
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\SettingSync" -Name 'BackupPolicy' -Value 0 | Out-Null
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\SettingSync" -Name 'DeviceMetadataUploaded' -Value 0 | Out-Null
     
     # Disable Windows Insider program (safe)
-    Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection" -Name 'AllowTelemetry' -Value 0
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection" -Name 'AllowTelemetry' -Value 0 | Out-Null
     
     # Disable targeted ads (safe)
-    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo" -Name 'Enabled' -Value 0
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo" -Name 'Enabled' -Value 0 | Out-Null
     
     # Disable app suggestions in Start Menu (safe)
-    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'ContentDeliveryAllowed' -Value 0
-    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'SilentInstalledAppsEnabled' -Value 0
-    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'PreInstalledAppsEnabled' -Value 0
-    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'OemPreInstalledAppsEnabled' -Value 0
-    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'PreInstalledAppsEverEnabled' -Value 0
-    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'SubscribedContentEnabled' -Value 0
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'ContentDeliveryAllowed' -Value 0 | Out-Null
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'SilentInstalledAppsEnabled' -Value 0 | Out-Null
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'PreInstalledAppsEnabled' -Value 0 | Out-Null
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'OemPreInstalledAppsEnabled' -Value 0 | Out-Null
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'PreInstalledAppsEverEnabled' -Value 0 | Out-Null
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'SubscribedContentEnabled' -Value 0 | Out-Null
     
     # Disable Windows Tips (safe)
-    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'ContentDeliveryAllowed' -Value 0
-    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'SoftLandingEnabled' -Value 0
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'ContentDeliveryAllowed' -Value 0 | Out-Null
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'SoftLandingEnabled' -Value 0 | Out-Null
     
     # Disable biometrics data collection (safe)
-    Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting" -Name 'Disabled' -Value 1
-    
-    Write-Success "Privacy settings configured"
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting" -Name 'Disabled' -Value 1 | Out-Null
 }
 
 # ============================================================================
@@ -467,24 +467,22 @@ function Set-SafePerformanceTweaks {
     Write-Info "Applying safe performance tweaks..."
     
     # Disable unnecessary startup programs (safe)
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'TaskbarDa' -Value 0
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'TaskbarDa' -Value 0 | Out-Null
     
     # Disable transparency (safe)
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize" -Name 'EnableTransparency' -Value 0
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize" -Name 'EnableTransparency' -Value 0 | Out-Null
     
     # Disable unnecessary visual effects (safe)
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects" -Name 'VisualFXSetting' -Value 2
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects" -Name 'VisualFXSetting' -Value 2 | Out-Null
     
     # Disable Game DVR (safe)
-    Set-RegistryValue -Path "HKCU\System\GameConfigStore" -Name 'GameDVR_Enabled' -Value 0
+    Set-RegistryValue -Path "HKCU\System\GameConfigStore" -Name 'GameDVR_Enabled' -Value 0 | Out-Null
     
     # Disable Windows Tips (safe)
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'ContentDeliveryAllowed' -Value 0
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'SilentInstalledAppsEnabled' -Value 0
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'SoftLandingEnabled' -Value 0
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'SubscribedContentEnabled' -Value 0
-    
-    Write-Success "Performance tweaks applied"
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'ContentDeliveryAllowed' -Value 0 | Out-Null
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'SilentInstalledAppsEnabled' -Value 0 | Out-Null
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'SoftLandingEnabled' -Value 0 | Out-Null
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'SubscribedContentEnabled' -Value 0 | Out-Null
 }
 
 # ============================================================================
@@ -494,18 +492,16 @@ function Set-SafeExplorerTweaks {
     Write-Info "Applying safe Explorer tweaks..."
     
     # Show file extensions (safe)
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'HideFileExt' -Value 0
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'HideFileExt' -Value 0 | Out-Null
     
     # Show hidden files (safe)
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'Hidden' -Value 1
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'Hidden' -Value 1 | Out-Null
     
     # Set Explorer to open to This PC (safe)
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'LaunchTo' -Value 1
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'LaunchTo' -Value 1 | Out-Null
     
     # Disable search box in taskbar (safe)
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Search" -Name 'SearchboxTaskbarMode' -Value 0
-    
-    Write-Success "Explorer tweaks applied"
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Search" -Name 'SearchboxTaskbarMode' -Value 0 | Out-Null
 }
 
 # ============================================================================
@@ -515,15 +511,13 @@ function Set-SafeTaskbarTweaks {
     Write-Info "Applying safe taskbar tweaks..."
     
     # Remove Task View button (safe)
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'ShowTaskViewButton' -Value 0
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'ShowTaskViewButton' -Value 0 | Out-Null
     
     # Remove People button (safe)
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'PeopleBand' -Value 0
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'PeopleBand' -Value 0 | Out-Null
     
     # Hide News/Interests (safe)
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Feeds" -Name 'ShellFeedsTaskbarOpenMode' -Value 2
-    
-    Write-Success "Taskbar tweaks applied"
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Feeds" -Name 'ShellFeedsTaskbarOpenMode' -Value 2 | Out-Null
 }
 
 # ============================================================================
@@ -540,7 +534,7 @@ function Set-SafeSystemCleanup {
                 Remove-Item -Path $path -Recurse -Force -ErrorAction SilentlyContinue
             }
         }
-        Write-Success "Temp files cleared"
+        Write-Info "Temp files cleared"
     }
     catch {
         # Silently fail
@@ -551,14 +545,14 @@ function Set-SafeSystemCleanup {
         $prefetchPath = "$env:SystemRoot\Prefetch"
         if (Test-Path $prefetchPath) {
             Remove-Item -Path "$prefetchPath\*" -Recurse -Force -ErrorAction SilentlyContinue
-            Write-Success "Prefetch cleared"
+            Write-Info "Prefetch cleared"
         }
     }
     catch {
         # Silently fail
     }
     
-    Write-Success "System cleanup completed"
+    Write-Info "System cleanup completed"
 }
 
 # ============================================================================
@@ -572,35 +566,33 @@ function Set-Windows11Optimizations {
     Write-Info "Applying Windows 11 specific optimizations..."
     
     # Disable Windows 11 Copilot (AI assistant)
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot" -Name 'TurnOffWindowsCopilot' -Value 1 -Type DWord
-    Set-RegistryValue -Path "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot" -Name 'TurnOffWindowsCopilot' -Value 1 -Type DWord
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot" -Name 'TurnOffWindowsCopilot' -Value 1 -Type DWord | Out-Null
+    Set-RegistryValue -Path "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot" -Name 'TurnOffWindowsCopilot' -Value 1 -Type DWord | Out-Null
     
     # Disable Windows 11 Widgets
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'TaskbarDa' -Value 0 -Type DWord
-    Set-RegistryValue -Path "HKLM\SOFTWARE\Policies\Microsoft\Dsh" -Name 'AllowNewsAndInterests' -Value 0 -Type DWord
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'TaskbarDa' -Value 0 -Type DWord | Out-Null
+    Set-RegistryValue -Path "HKLM\SOFTWARE\Policies\Microsoft\Dsh" -Name 'AllowNewsAndInterests' -Value 0 -Type DWord | Out-Null
     
     # Disable Windows 11 Snap Layouts hover
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'EnableSnapAssistFlyout' -Value 0 -Type DWord
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'EnableSnapAssistFlyout' -Value 0 -Type DWord | Out-Null
     
     # Disable Windows 11 centered taskbar (optional - keep left aligned)
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'TaskbarAl' -Value 0 -Type DWord
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'TaskbarAl' -Value 0 -Type DWord | Out-Null
     
     # Disable Windows 11 Chat icon
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'TaskbarMn' -Value 0 -Type DWord
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'TaskbarMn' -Value 0 -Type DWord | Out-Null
     
     # Disable Windows 11 Search highlights
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'TaskbarSearchBoxMode' -Value 0 -Type DWord
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'TaskbarSearchBoxMode' -Value 0 -Type DWord | Out-Null
     
     # Disable Windows 11 recommendations in Start Menu
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'Start_IrisRecommendations' -Value 0 -Type DWord
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'Start_IrisRecommendations' -Value 0 -Type DWord | Out-Null
     
     # Disable Windows 11 ads in Start Menu
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'Start_ShowRecommendedSection' -Value 0 -Type DWord
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'Start_ShowRecommendedSection' -Value 0 -Type DWord | Out-Null
     
     # Disable Windows 11 File Explorer ads
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'ShowSyncProviderNotifications' -Value 0 -Type DWord
-    
-    Write-Success "Windows 11 specific optimizations applied"
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'ShowSyncProviderNotifications' -Value 0 -Type DWord | Out-Null
 }
 
 # ============================================================================
@@ -610,56 +602,56 @@ function Set-FPSBoostOptimizations {
     Write-Info "Applying FPS boost optimizations (30+ FPS gain guaranteed)..."
     
     # Disable Game DVR (major FPS killer)
-    Set-RegistryValue -Path "HKCU\System\GameConfigStore" -Name 'GameDVR_Enabled' -Value 0
-    Set-RegistryValue -Path "HKLM\SOFTWARE\Microsoft\PolicyManager\default\ApplicationManagement\AllowGameDVR" -Name 'value' -Value 0
+    Set-RegistryValue -Path "HKCU\System\GameConfigStore" -Name 'GameDVR_Enabled' -Value 0 | Out-Null
+    Set-RegistryValue -Path "HKLM\SOFTWARE\Microsoft\PolicyManager\default\ApplicationManagement\AllowGameDVR" -Name 'value' -Value 0 | Out-Null
     
     # Disable Game Bar
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\GameBar" -Name 'AllowAutoGameMode' -Value 0
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\GameBar" -Name 'AutoGameModeEnabled' -Value 0
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\GameBar" -Name 'AllowGameDVR' -Value 0
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\GameBar" -Name 'AllowAutoGameMode' -Value 0 | Out-Null
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\GameBar" -Name 'AutoGameModeEnabled' -Value 0 | Out-Null
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\GameBar" -Name 'AllowGameDVR' -Value 0 | Out-Null
     
     # Disable Game Mode (can actually reduce FPS)
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\GameBar" -Name 'AllowAutoGameMode' -Value 0
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\GameBar" -Name 'AllowAutoGameMode' -Value 0 | Out-Null
     
     # Disable Xbox Game Monitoring
-    Set-RegistryValue -Path "HKLM\SOFTWARE\Microsoft\PolicyManager\default\ApplicationManagement\AllowGameDVR" -Name 'value' -Value 0
+    Set-RegistryValue -Path "HKLM\SOFTWARE\Microsoft\PolicyManager\default\ApplicationManagement\AllowGameDVR" -Name 'value' -Value 0 | Out-Null
     
     # Optimize GPU scheduling (Windows 10/11)
-    Set-RegistryValue -Path "HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers" -Name 'HwSchMode' -Value 2
+    Set-RegistryValue -Path "HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers" -Name 'HwSchMode' -Value 2 | Out-Null
     
     # Disable fullscreen optimizations (can cause stuttering)
-    Set-RegistryValue -Path "HKCU\SYSTEM\CurrentControlSet\Control\GraphicsDrivers" -Name 'FullscreenOptimizations' -Value 0
+    Set-RegistryValue -Path "HKCU\SYSTEM\CurrentControlSet\Control\GraphicsDrivers" -Name 'FullscreenOptimizations' -Value 0 | Out-Null
     
     # Disable Windows Error Reporting (can interrupt games)
-    Set-RegistryValue -Path "HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting" -Name 'Disabled' -Value 1
+    Set-RegistryValue -Path "HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting" -Name 'Disabled' -Value 1 | Out-Null
     
     # Disable Windows Search indexing (can cause FPS drops)
-    Set-RegistryValue -Path "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" -Name 'AllowIndexingEncryptedStoresOrItems' -Value 0
-    Set-RegistryValue -Path "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" -Name 'AllowSearchToUseLocation' -Value 0
+    Set-RegistryValue -Path "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" -Name 'AllowIndexingEncryptedStoresOrItems' -Value 0 | Out-Null
+    Set-RegistryValue -Path "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" -Name 'AllowSearchToUseLocation' -Value 0 | Out-Null
     
     # Disable Superfetch/Prefetch (can cause stuttering)
-    Set-RegistryValue -Path "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters" -Name 'EnablePrefetcher' -Value 0
-    Set-RegistryValue -Path "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters" -Name 'EnableSuperfetch' -Value 0
+    Set-RegistryValue -Path "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters" -Name 'EnablePrefetcher' -Value 0 | Out-Null
+    Set-RegistryValue -Path "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters" -Name 'EnableSuperfetch' -Value 0 | Out-Null
     
     # Disable SysMain (Superfetch)
-    Set-RegistryValue -Path "HKLM\SYSTEM\CurrentControlSet\Services\SysMain" -Name 'Start' -Value 4
+    Set-RegistryValue -Path "HKLM\SYSTEM\CurrentControlSet\Services\SysMain" -Name 'Start' -Value 4 | Out-Null
     
     # Disable Windows Tips (can cause FPS drops)
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'ContentDeliveryAllowed' -Value 0
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'SilentInstalledAppsEnabled' -Value 0
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'SoftLandingEnabled' -Value 0
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'ContentDeliveryAllowed' -Value 0 | Out-Null
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'SilentInstalledAppsEnabled' -Value 0 | Out-Null
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'SoftLandingEnabled' -Value 0 | Out-Null
     
     # Disable background apps (can cause FPS drops)
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications" -Name 'GlobalUserDisabled' -Value 1
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications" -Name 'GlobalUserDisabled' -Value 1 | Out-Null
     
     # Disable notifications during games
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Notifications\Settings" -Name 'NOC_GLOBAL_SETTING_ALLOW_TOASTS_ABOVE_LOCK' -Value 0
-    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Notifications\Settings" -Name 'NOC_GLOBAL_SETTING_QUIET_HOURS' -Value 1
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Notifications\Settings" -Name 'NOC_GLOBAL_SETTING_ALLOW_TOASTS_ABOVE_LOCK' -Value 0 | Out-Null
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Notifications\Settings" -Name 'NOC_GLOBAL_SETTING_QUIET_HOURS' -Value 1 | Out-Null
     
     # Optimize power plan for performance
     try {
         powercfg -setactive 8c5e7fda-e8bf-45a6-a7cc-4b3c8f9c8e3c
-        Write-Success "Set power plan to High Performance"
+        Write-Info "Set power plan to High Performance"
     }
     catch {
         # Silently fail
@@ -668,13 +660,11 @@ function Set-FPSBoostOptimizations {
     # Disable hibernation (frees up RAM)
     try {
         powercfg -h off
-        Write-Success "Disabled hibernation"
+        Write-Info "Disabled hibernation"
     }
     catch {
         # Silently fail
     }
-    
-    Write-Success "FPS boost optimizations applied (30+ FPS gain)"
 }
 
 # ============================================================================
@@ -684,19 +674,17 @@ function Set-SafeNetworkTweaks {
     Write-Info "Applying safe network tweaks..."
     
     # Disable network throttling for games (safe)
-    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile" -Name 'NetworkThrottlingIndex' -Value 4294967295
-    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games" -Name 'NetworkThrottlingIndex' -Value 4294967295
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile" -Name 'NetworkThrottlingIndex' -Value 4294967295 | Out-Null
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games" -Name 'NetworkThrottlingIndex' -Value 4294967295 | Out-Null
     
     # Disable system responsiveness for games (safe)
-    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile" -Name 'SystemResponsiveness' -Value 0
-    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games" -Name 'SystemResponsiveness' -Value 0
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile" -Name 'SystemResponsiveness' -Value 0 | Out-Null
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games" -Name 'SystemResponsiveness' -Value 0 | Out-Null
     
     # Optimize TCP/IP for gaming
-    Set-RegistryValue -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" -Name 'TcpAckFrequency' -Value 1
-    Set-RegistryValue -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" -Name 'TCPNoDelay' -Value 1
-    Set-RegistryValue -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" -Name 'TcpDelAckTicks' -Value 0
-    
-    Write-Success "Network tweaks applied"
+    Set-RegistryValue -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" -Name 'TcpAckFrequency' -Value 1 | Out-Null
+    Set-RegistryValue -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" -Name 'TCPNoDelay' -Value 1 | Out-Null
+    Set-RegistryValue -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" -Name 'TcpDelAckTicks' -Value 0 | Out-Null
 }
 
 # ============================================================================
@@ -728,7 +716,7 @@ function Set-SafeStartupOptimization {
         # Silently fail
     }
     
-    Write-Success "Startup optimization completed"
+    Write-Info "Startup optimization completed"
 }
 
 # ============================================================================
