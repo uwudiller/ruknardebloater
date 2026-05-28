@@ -240,6 +240,8 @@ function Remove-SafeBloatware {
         'Microsoft.XboxGameOverlay',
         'Microsoft.XboxIdentityProvider',
         'Microsoft.XboxSpeechToTextOverlay',
+        'Microsoft.XboxGamingOverlay',
+        'Microsoft.Xbox.TCUI',
         'Microsoft.YourPhone',
         'Microsoft.ZuneMusic',
         'Microsoft.ZuneVideo',
@@ -247,6 +249,41 @@ function Remove-SafeBloatware {
         'Microsoft.BingSearch',
         'MicrosoftCorporationII.MicrosoftFamily',
         'MicrosoftCorporationII.QuickAssist',
+        'Microsoft.WindowsReadingList',
+        'Microsoft.WindowsScan',
+        'Microsoft.WindowsPhone',
+        'Microsoft.WindowsCommunicationsApps',
+        'Microsoft.WindowsMaps',
+        'Microsoft.WindowsAlarms',
+        'Microsoft.WindowsCamera',
+        'Microsoft.XboxGameCallableUI',
+        'Microsoft.XboxSpeechToTextOverlay',
+        'Microsoft.XboxGameOverlay',
+        'Microsoft.XboxIdentityProvider',
+        'Microsoft.XboxApp',
+        'Microsoft.XboxGameBar',
+        'Microsoft.XboxGamingOverlay',
+        'Microsoft.XboxSpeechToTextOverlay',
+        'Microsoft.YourPhone',
+        'Microsoft.ZuneMusic',
+        'Microsoft.ZuneVideo',
+        'Microsoft.BingWeather',
+        'Microsoft.BingNews',
+        'Microsoft.BingSports',
+        'Microsoft.BingFinance',
+        'Microsoft.BingTravel',
+        'Microsoft.BingFoodAndDrink',
+        'Microsoft.BingHealthAndFitness',
+        'Microsoft.BingMaps',
+        'Microsoft.BingSports',
+        'Microsoft.BingWeather',
+        'Microsoft.BingNews',
+        'Microsoft.BingFinance',
+        'Microsoft.BingTravel',
+        'Microsoft.BingFoodAndDrink',
+        'Microsoft.BingHealthAndFitness',
+        'Microsoft.BingMaps',
+        'Microsoft.BingSports',
         '*EclipseManager*',
         '*ActiproSoftware*',
         '*AdobeSystemsIncorporated.AdobePhotoshopExpress*',
@@ -306,7 +343,26 @@ function Remove-SafeBloatware {
         '*Wunderlist*',
         '*Xing*',
         '*ZombieSmasher*',
-        '*Zumo*'
+        '*Zumo*',
+        '*Bytedance*',
+        '*TikTok*',
+        '*TikTokPTE*',
+        '*ByteDance*',
+        '*CapCut*',
+        '*VideoEditor*',
+        '*Clipchamp*',
+        '*Microsoft.Edge*',
+        '*MicrosoftEdge*',
+        '*Microsoft.Bing*',
+        '*Microsoft.BingNews*',
+        '*Microsoft.BingWeather*',
+        '*Microsoft.BingSports*',
+        '*Microsoft.BingFinance*',
+        '*Microsoft.BingTravel*',
+        '*Microsoft.BingFoodAndDrink*',
+        '*Microsoft.BingHealthAndFitness*',
+        '*Microsoft.BingMaps*',
+        '*Microsoft.BingSports*'
     )
     
     foreach ($app in $safeBloatware) {
@@ -337,21 +393,69 @@ function Set-SafePrivacySettings {
     # Disable telemetry (safe)
     Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection" -Name 'AllowTelemetry' -Value 0
     Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\DataCollection" -Name 'AllowTelemetry' -Value 0
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection" -Name 'MaxTelemetryAllowed' -Value 0
     
     # Disable advertising ID (safe)
     Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo" -Name 'Enabled' -Value 0
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo" -Name 'Enabled' -Value 0
     
     # Disable location services (safe)
     Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location" -Name 'Value' -Value 'Deny'
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location" -Name 'Value' -Value 'Deny'
     
     # Disable camera access (safe)
     Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\webcam" -Name 'Value' -Value 'Deny'
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\webcam" -Name 'Value' -Value 'Deny'
     
     # Disable microphone access (safe)
     Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone" -Name 'Value' -Value 'Deny'
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone" -Name 'Value' -Value 'Deny'
     
     # Disable activity history (safe)
     Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name 'EnableActivityHistory' -Value 0
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name 'PublishUserActivities' -Value 0
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Privacy" -Name 'TailoredExperiencesWithDiagnosticDataEnabled' -Value 0
+    
+    # Disable Cortana (safe)
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Search" -Name 'AllowCortana' -Value 0
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search" -Name 'CortanaConsent' -Value 0
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Search" -Name 'BingSearchEnabled' -Value 0
+    
+    # Disable Windows Error Reporting (safe)
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting" -Name 'Disabled' -Value 1
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\Windows Error Reporting" -Name 'Disabled' -Value 1
+    
+    # Disable Customer Experience Improvement Program (safe)
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\SQMClient\Windows" -Name 'CEIPEnable' -Value 0
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\SQMClient\Windows" -Name 'CEIPEnable' -Value 0
+    
+    # Disable app diagnostics (safe)
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Privacy" -Name 'TailoredExperiencesWithDiagnosticDataEnabled' -Value 0
+    
+    # Disable Microsoft account sync (safe)
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\SettingSync" -Name 'BackupPolicy' -Value 0
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\SettingSync" -Name 'DeviceMetadataUploaded' -Value 0
+    
+    # Disable Windows Insider program (safe)
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection" -Name 'AllowTelemetry' -Value 0
+    
+    # Disable targeted ads (safe)
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo" -Name 'Enabled' -Value 0
+    
+    # Disable app suggestions in Start Menu (safe)
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'ContentDeliveryAllowed' -Value 0
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'SilentInstalledAppsEnabled' -Value 0
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'PreInstalledAppsEnabled' -Value 0
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'OemPreInstalledAppsEnabled' -Value 0
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'PreInstalledAppsEverEnabled' -Value 0
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'SubscribedContentEnabled' -Value 0
+    
+    # Disable Windows Tips (safe)
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'ContentDeliveryAllowed' -Value 0
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name 'SoftLandingEnabled' -Value 0
+    
+    # Disable biometrics data collection (safe)
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting" -Name 'Disabled' -Value 1
     
     Write-Success "Privacy settings configured"
 }
@@ -455,6 +559,48 @@ function Set-SafeSystemCleanup {
     }
     
     Write-Success "System cleanup completed"
+}
+
+# ============================================================================
+# WINDOWS 11 SPECIFIC OPTIMIZATIONS
+# ============================================================================
+function Set-Windows11Optimizations {
+    if (-not $Script:WindowsInfo.IsWindows11) {
+        return
+    }
+    
+    Write-Info "Applying Windows 11 specific optimizations..."
+    
+    # Disable Windows 11 Copilot (AI assistant)
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot" -Name 'TurnOffWindowsCopilot' -Value 1 -Type DWord
+    Set-RegistryValue -Path "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot" -Name 'TurnOffWindowsCopilot' -Value 1 -Type DWord
+    
+    # Disable Windows 11 Widgets
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'TaskbarDa' -Value 0 -Type DWord
+    Set-RegistryValue -Path "HKLM\SOFTWARE\Policies\Microsoft\Dsh" -Name 'AllowNewsAndInterests' -Value 0 -Type DWord
+    
+    # Disable Windows 11 Snap Layouts hover
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'EnableSnapAssistFlyout' -Value 0 -Type DWord
+    
+    # Disable Windows 11 centered taskbar (optional - keep left aligned)
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'TaskbarAl' -Value 0 -Type DWord
+    
+    # Disable Windows 11 Chat icon
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'TaskbarMn' -Value 0 -Type DWord
+    
+    # Disable Windows 11 Search highlights
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'TaskbarSearchBoxMode' -Value 0 -Type DWord
+    
+    # Disable Windows 11 recommendations in Start Menu
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'Start_IrisRecommendations' -Value 0 -Type DWord
+    
+    # Disable Windows 11 ads in Start Menu
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'Start_ShowRecommendedSection' -Value 0 -Type DWord
+    
+    # Disable Windows 11 File Explorer ads
+    Set-RegistryValue -Path "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'ShowSyncProviderNotifications' -Value 0 -Type DWord
+    
+    Write-Success "Windows 11 specific optimizations applied"
 }
 
 # ============================================================================
@@ -586,6 +732,57 @@ function Set-SafeStartupOptimization {
 }
 
 # ============================================================================
+# DISCLAIMER AND CONFIRMATION
+# ============================================================================
+function Show-Disclaimer {
+    Clear-Host
+    Write-Host ""
+    Write-Host "╔══════════════════════════════════════════════════════════════════════════════╗" -ForegroundColor Red
+    Write-Host "║" -ForegroundColor Red -NoNewline
+    Write-Host "                            RUKNARLITE DISCLAIMER                            " -ForegroundColor Red -NoNewline
+    Write-Host "║" -ForegroundColor Red
+    Write-Host "╠══════════════════════════════════════════════════════════════════════════════╣" -ForegroundColor Red
+    Write-Host "║" -ForegroundColor Red -NoNewline
+    Write-Host "                                                                              " -ForegroundColor Red -NoNewline
+    Write-Host "║" -ForegroundColor Red
+    Write-Host "║" -ForegroundColor Red -NoNewline
+    Write-Host "  ⚠️  WARNING: This script modifies your Windows system configuration.          " -ForegroundColor Red -NoNewline
+    Write-Host "║" -ForegroundColor Red
+    Write-Host "║" -ForegroundColor Red -NoNewline
+    Write-Host "                                                                              " -ForegroundColor Red -NoNewline
+    Write-Host "║" -ForegroundColor Red
+    Write-Host "║" -ForegroundColor Red -NoNewline
+    Write-Host "  By proceeding, you acknowledge that:                                         " -ForegroundColor Red -NoNewline
+    Write-Host "║" -ForegroundColor Red
+    Write-Host "║" -ForegroundColor Red -NoNewline
+    Write-Host "  • Any issues, data loss, or system instability are NOT the fault of the     " -ForegroundColor Red -NoNewline
+    Write-Host "║" -ForegroundColor Red
+    Write-Host "║" -ForegroundColor Red -NoNewline
+    Write-Host "    creator of this script.                                                   " -ForegroundColor Red -NoNewline
+    Write-Host "║" -ForegroundColor Red
+    Write-Host "║" -ForegroundColor Red -NoNewline
+    Write-Host "  • You have created a system restore point (recommended).                    " -ForegroundColor Red -NoNewline
+    Write-Host "║" -ForegroundColor Red
+    Write-Host "║" -ForegroundColor Red -NoNewline
+    Write-Host "  • You understand that all changes can be reverted using -Revert parameter.  " -ForegroundColor Red -NoNewline
+    Write-Host "║" -ForegroundColor Red
+    Write-Host "║" -ForegroundColor Red -NoNewline
+    Write-Host "  • This script is provided AS IS without any warranty or guarantee.           " -ForegroundColor Red -NoNewline
+    Write-Host "║" -ForegroundColor Red
+    Write-Host "║" -ForegroundColor Red -NoNewline
+    Write-Host "                                                                              " -ForegroundColor Red -NoNewline
+    Write-Host "║" -ForegroundColor Red
+    Write-Host "║" -ForegroundColor Red -NoNewline
+    Write-Host "  The creator is NOT responsible for any damage to your system.               " -ForegroundColor Red -NoNewline
+    Write-Host "║" -ForegroundColor Red
+    Write-Host "║" -ForegroundColor Red -NoNewline
+    Write-Host "                                                                              " -ForegroundColor Red -NoNewline
+    Write-Host "║" -ForegroundColor Red
+    Write-Host "╚══════════════════════════════════════════════════════════════════════════════╝" -ForegroundColor Red
+    Write-Host ""
+}
+
+# ============================================================================
 # MAIN EXECUTION
 # ============================================================================
 function Invoke-RuknarLITE {
@@ -602,7 +799,17 @@ function Invoke-RuknarLITE {
         return
     }
     
+    # Show disclaimer and get confirmation
+    Show-Disclaimer
+    $confirmation = Read-Host "Do you want to continue? Type 'YES' to proceed, or anything else to cancel"
+    if ($confirmation -ne 'YES') {
+        Write-Host ""
+        Write-Host "Operation cancelled by user." -ForegroundColor Yellow
+        exit 0
+    }
+    
     # Initialize
+    Initialize-WindowsDetection
     Initialize-Backup
     Write-Info "Starting safe debloating process..."
     Write-Info ""
@@ -612,6 +819,7 @@ function Invoke-RuknarLITE {
     Set-SafePrivacySettings
     Set-SafePerformanceTweaks
     Set-FPSBoostOptimizations
+    Set-Windows11Optimizations
     Set-SafeExplorerTweaks
     Set-SafeTaskbarTweaks
     Set-SafeSystemCleanup
@@ -628,6 +836,7 @@ function Invoke-RuknarLITE {
     Write-ColorOutput "===============================================================================" -Color Cyan
     Write-ColorOutput ""
     Write-ColorOutput "Summary:" -Color White
+    Write-ColorOutput "  Total Tweaks Applied: $Script:TweakCount" -Color Green
     Write-ColorOutput "  Success: $Script:SuccessCount" -Color Green
     Write-ColorOutput "  Errors: $Script:ErrorCount" -Color Red
     Write-ColorOutput ""
