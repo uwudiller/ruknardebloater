@@ -28,6 +28,7 @@ $Script:ErrorCount = 0
 $Script:SuccessCount = 0
 $Script:WindowsInfo = @{}
 $Script:TweakCount = 0
+$Script:AttemptedCount = 0
 
 # ============================================================================
 # COLOR OUTPUT
@@ -149,19 +150,32 @@ function Set-RegistryValue {
         [string]$Type = 'DWord'
     )
     
+    $Script:AttemptedCount++
+    
     try {
-        if (-not (Test-Path $Path)) {
-            New-Item -Path $Path -Force -ErrorAction Stop | Out-Null
+        # Create the full path if it doesn't exist
+        $pathParts = $Path.Split('\')
+        $currentPath = ""
+        foreach ($part in $pathParts) {
+            if ($currentPath -eq "") {
+                $currentPath = $part
+            } else {
+                $currentPath = "${currentPath}\${part}"
+            }
+            if (-not (Test-Path $currentPath)) {
+                New-Item -Path $currentPath -Force -ErrorAction SilentlyContinue | Out-Null
+            }
         }
         
         $currentValue = (Get-ItemProperty -Path $Path -ErrorAction SilentlyContinue).$Name
-        Set-ItemProperty -Path $Path -Name $Name -Value $Value -Type $Type -ErrorAction Stop
+        Set-ItemProperty -Path $Path -Name $Name -Value $Value -Type $Type -ErrorAction SilentlyContinue
         Add-BackupEntry -Type 'Registry' -Name $Name -OriginalValue $currentValue -NewValue $Value -Path $Path
         Write-Success "Set registry: ${Path}\${Name} = $Value"
         return $true
     }
     catch {
-        # Silently fail registry errors unless critical
+        # Log the error but don't stop execution
+        Write-Error "Failed to set registry: ${Path}\${Name}"
         return $false
     }
 }
@@ -824,8 +838,8 @@ function Invoke-RuknarLITE {
     Write-ColorOutput "===============================================================================" -Color Cyan
     Write-ColorOutput ""
     Write-ColorOutput "Summary:" -Color White
-    Write-ColorOutput "  Total Tweaks Applied: $Script:TweakCount" -Color Green
-    Write-ColorOutput "  Success: $Script:SuccessCount" -Color Green
+    Write-ColorOutput "  Total Tweaks Attempted: $Script:AttemptedCount" -Color Green
+    Write-ColorOutput "  Successfully Applied: $Script:TweakCount" -Color Green
     Write-ColorOutput "  Errors: $Script:ErrorCount" -Color Red
     Write-ColorOutput ""
     Write-ColorOutput "Backup saved to: $Script:BackupFile" -Color Cyan
